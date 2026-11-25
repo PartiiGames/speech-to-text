@@ -1,0 +1,27 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>listen bench</title>
+<pre id="log"></pre>
+<script type="module">
+// One setting per page (fresh page per setting; the driver alternates them). Query: ?model=&backend=&fmm=0|1&pad=1000
+const q = new URLSearchParams(location.search);
+const log = (m) => { document.getElementById("log").textContent += m + "\n"; console.log("[bench] " + m); };
+let worker = null;
+const call = (msg) => new Promise((res, rej) => { worker.onmessage = ({ data }) => data.ok ? res(data) : rej(new Error(data.error)); worker.onerror = (e) => rej(new Error(e.message)); worker.postMessage(msg); });
+window.runBench = async (clips) => {
+  const res = { ua: navigator.userAgent, isolated: self.crossOriginIsolated, model: q.get("model"), backend: q.get("backend"), fmm: q.get("fmm") === "1", rows: [] };
+  worker = new Worker("/worker.mjs", { type: "module" });
+  const l = await call({ cmd: "load", model: res.model, backend: res.backend, fmm: res.fmm, padMs: q.get("pad") ? +q.get("pad") : undefined, warm: clips.length ? `/c/${clips[0].file}` : null });
+  res.loadMs = l.loadMs; res.fmmAfterLoad = l.fmm;
+  log(`load ${l.loadMs.toFixed(0)} ms (incl. warm-up) fmm [on, small, all] ${l.fmm}`);
+  for (const [i, c] of clips.entries()) {
+    const r = await call({ cmd: "wav", url: `/c/${c.file}` });
+    res.rows.push({ id: c.id, sec: c.sec, ms: r.ms, ...r.result });
+    res.fmmEnd = r.fmm;
+    log(`${i + 1}/${clips.length} ${c.id} ${r.ms.toFixed(0)} ms | ${r.result.text}`);
+  }
+  worker.terminate();
+  return res;
+};
+window.benchReady = true;
+</script>

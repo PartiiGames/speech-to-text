@@ -1,0 +1,9 @@
+{
+  "name": "speech-to-text-web",
+  "private": true,
+  "type": "module",
+  "description": "listen Worker + headless Chrome/WebKit bench (Playwright)",
+  "dependencies": {
+    "playwright-core": "1.65.0"
+  }
+}

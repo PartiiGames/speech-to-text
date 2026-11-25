@@ -1,0 +1,80 @@
+[package]
+name = "speech-to-text"
+version = "0.1.0"
+edition = "2024"
+authors = ["Partii Games"]
+repository = "https://github.com/PartiiGames/speech-to-text"
+homepage = "https://partii.games"
+license = "MIT OR Apache-2.0"
+description = "Real-time, on-device speech to text: OpenAI Whisper tiny.en / base.en on burn, native CPU, WebGPU / Metal / Vulkan via wgpu, and the browser (wasm). 5.9 s of speech in 143 ms on one desktop CPU (tiny.en); streaming partials and cancellation."
+readme = "README.md"
+keywords = ["speech-recognition", "whisper", "realtime", "streaming", "stt"]
+categories = ["multimedia::audio", "science", "wasm", "web-programming"]
+# Not in the published package: Partii's farm/Mac scripts and the browser test harness (see FARM.md).
+exclude = ["farm*.sh", "FARM.md", "web/", "out/"]
+
+[lib]
+# cdylib: the browser build (feature `web`: wasm-bindgen --target web, for a Web Worker)
+crate-type = ["rlib", "cdylib"]
+
+[dependencies]
+# burn =0.22.1 exactly; CPU = flex (Device::flex()); GPU = wgpu + fusion
+burn = { version = "=0.22.1", default-features = false, features = ["std", "flex"] }
+burn-wgpu = { version = "=0.22.1", default-features = false, features = ["std", "template"], optional = true }
+# only with `partii-kernels`: Partii's fork of burn-cubecl (hand-written WGSL kernels), supplied through [patch]
+burn-cubecl = { version = "=0.22.1", default-features = false, features = ["std", "template"], optional = true }
+# flex's `simd` turns on gemm's wasm simd128 kernel (gemm/wasm-simd128-enable). burn's `flex` feature alone, with
+# default-features = false, leaves it off, so wasm32 runs gemm's scalar kernel even with +simd128.
+burn-flex = { version = "=0.22.1", default-features = false, features = ["std"] }
+safetensors = "0.5"
+rustfft = "6"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+hound = { version = "3.5", optional = true }
+wasm-bindgen = { version = "0.2", optional = true }
+wasm-bindgen-futures = { version = "0.4", optional = true }
+# bench bins only
+gemm-common = { version = "0.19", default-features = false, optional = true }
+pollster = { version = "0.4", optional = true }
+
+[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
+getrandom = { version = "0.3", features = ["wasm_js"] }
+getrandom02 = { package = "getrandom", version = "0.2", features = ["js"] }
+getrandom04 = { package = "getrandom", version = "0.4", features = ["wasm_js"] }
+
+[dev-dependencies]
+hound = "3.5"
+pollster = "0.4"
+sha2 = "0.10"
+ureq = "2.12"
+
+[features]
+default = ["gpu", "flex-simd", "flex-rayon"]
+# SIMD kernels for flex (gemm's wasm simd128 kernel on wasm32)
+flex-simd = ["burn-flex/simd"]
+# threads for flex natively (on wasm32-unknown-unknown rayon runs on the calling thread)
+flex-rayon = ["burn-flex/rayon"]
+# the wgpu backend: WebGPU in the browser, Metal / Vulkan / D3D12 natively. Off for CPU-only builds.
+gpu = ["burn/wgpu", "burn/fusion", "burn/webgpu", "dep:burn-wgpu"]
+# browser entry (src/web.rs, wasm32-unknown-unknown): `Listen.load` / `transcribe` for a Web Worker
+web = ["gpu", "flex-simd", "dep:wasm-bindgen", "dep:wasm-bindgen-futures", "dep:hound"]
+# Partii's hand-written WGSL kernels (the f32 matmul switch and its debug log). Needs Partii's fork of burn-cubecl
+# (partii-burn-cubecl) through [patch.crates-io]; it does not build against stock burn-cubecl.
+partii-kernels = ["gpu", "dep:burn-cubecl"]
+# the bench and probe binaries (Partii's clip-set bench; a flex matmul probe)
+bench = ["dep:hound", "dep:pollster", "dep:gemm-common"]
+
+[[bin]]
+name = "listen_bench"
+required-features = ["bench"]
+
+[[bin]]
+name = "mm_probe"
+required-features = ["bench"]
+
+[[example]]
+name = "transcribe"
+
+[package.metadata.docs.rs]
+# docs.rs builds against stock burn: no partii-kernels
+features = ["gpu"]

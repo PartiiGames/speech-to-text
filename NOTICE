@@ -1,0 +1,65 @@
+speech-to-text
+Copyright (c) 2026 Partii Games LLC
+Licensed under either of the MIT license (LICENSE-MIT) or the Apache License, Version 2.0 (LICENSE-APACHE), at your
+option.
+
+This crate contains no model weights. It reads the files below at runtime; you supply their bytes. The
+`transcribe` example downloads the tiny.en files at the pinned revision and checks each sha256.
+
+--------------------------------------------------------------------------------------------------------------------
+Model files read at runtime
+--------------------------------------------------------------------------------------------------------------------
+
+OpenAI Whisper tiny.en
+  License: MIT, Copyright (c) 2022 OpenAI (https://github.com/openai/whisper/blob/main/LICENSE; model card:
+           https://huggingface.co/openai/whisper-tiny.en)
+  Source:  https://huggingface.co/openai/whisper-tiny.en/tree/87c7102498dcde7456f24cfd30239ca606ed9063
+  Revision: 87c7102498dcde7456f24cfd30239ca606ed9063
+  sha256, bytes:
+    model.safetensors  db59695928ded6043adaef491a53ef4e12da9611184d77c53baa691a60b958ad  151060136
+    config.json        b5366317df280f79e6cc366f259f379674f81a8721d458acf2e00680ccb10b1d  1937
+    tokenizer.json     5eb60cec1e77aeeb6869a2bb5a8e01a84c3fe5d072d75369343021fe6f5310d0  2405679
+
+OpenAI Whisper base.en
+  License: MIT, Copyright (c) 2022 OpenAI (https://github.com/openai/whisper/blob/main/LICENSE; model card:
+           https://huggingface.co/openai/whisper-base.en)
+  Source:  https://huggingface.co/openai/whisper-base.en/tree/911407f4214e0e1d82085af863093ec0b66f9cd6
+  Revision: 911407f4214e0e1d82085af863093ec0b66f9cd6
+  sha256, bytes:
+    model.safetensors  d4dd5542fd6a1d35639e21384238f3bfe6c557c849d392b5905d33ee29e71db5  290401888
+    config.json        160c1df40a60d4ef5a6014d536fd845c33aabfd1f318458ac7f87cfe91ebbe76  1937
+    tokenizer.json     5eb60cec1e77aeeb6869a2bb5a8e01a84c3fe5d072d75369343021fe6f5310d0  2405679
+
+Upstream URLs: https://huggingface.co/<repo>/resolve/<revision>/<file>. Partii mirrors the same bytes at
+https://api.partii.games/v1/ai/speech-to-text/<sha256>/<file>. tokenizer.json is the GPT-2
+byte-level BPE vocabulary as published with Whisper (MIT, as above).
+
+--------------------------------------------------------------------------------------------------------------------
+Code ported from other projects
+--------------------------------------------------------------------------------------------------------------------
+
+OpenAI Whisper (https://github.com/openai/whisper), MIT, Copyright (c) 2022 OpenAI
+  - src/mel.rs: the log-mel front end of whisper/audio.py `log_mel_spectrogram` (n_fft 400, hop 160, periodic Hann
+    window, centred STFT with reflect padding, last frame dropped, power spectrum, log10 clamped to max - 8, then
+    (x + 4) / 4) and its 16 kHz / 30 s constants.
+  - src/model.rs: the encoder-decoder architecture of whisper/model.py (two conv1d + GELU stem, pre-norm transformer
+    blocks, learned positions, tied output embedding) and the special-token prompt (<|startoftranscript|>,
+    <|notimestamps|>), implemented in burn. Tensor names follow the Hugging Face Transformers checkpoint layout
+    (Apache-2.0, https://github.com/huggingface/transformers); no Transformers code is included.
+
+librosa (https://github.com/librosa/librosa), ISC, Copyright (c) 2013--2023, librosa development team
+  - src/mel.rs `mel_filters`: the Slaney-scale, Slaney-normalized mel filter bank of librosa.filters.mel (the
+    matrix Whisper ships as mel_filters.npz), computed here instead of loaded.
+  ISC license: Permission to use, copy, modify, and/or distribute this software for any purpose with or without fee
+  is hereby granted, provided that the above copyright notice and this permission notice appear in all copies.
+  THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING
+  ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL,
+  DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+  WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE
+  USE OR PERFORMANCE OF THIS SOFTWARE.
+
+OpenAI GPT-2 (https://github.com/openai/gpt-2), "Modified MIT License" (MIT terms), Copyright (c) 2019 OpenAI
+  - src/tokenizer.rs `bytes_to_unicode`: the byte-to-unicode table of gpt-2/src/encoder.py, used to decode
+    byte-level BPE tokens.
+
+MIT license text (for the OpenAI projects above): see LICENSE-MIT, with the copyright lines given above.
