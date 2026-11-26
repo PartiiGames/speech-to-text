@@ -1,10 +1,10 @@
-Speech to text (Whisper) on burn for native, WebGPU and the browser, by Partii (https://partii.games), the place to make games together.
+Speech to text (Moonshine and Whisper) on burn for native, WebGPU and the browser, by Partii (https://partii.games), the place to make games together.
 
 # speech-to-text
 
-On-device speech recognition with OpenAI's Whisper (`tiny.en` and `base.en`), written in Rust on
-[burn](https://burn.dev) 0.22.1. It is built for short spoken commands, such as a player talking to a game, and keeps
-the audio on the device.
+On-device speech recognition with Useful Sensors' Moonshine (`tiny`, `base`) and OpenAI's Whisper (`tiny.en` and
+`base.en`), written in Rust on [burn](https://burn.dev) 0.22.1. It is built for short spoken commands, such as a player
+talking to a game, and keeps the audio on the device.
 
 - **One crate, three places:** the native CPU (burn's `flex` backend), the GPU through wgpu (Metal, Vulkan, D3D12
   natively; WebGPU in the browser), and the browser as wasm in a Web Worker (WebGPU or the CPU).
@@ -31,7 +31,7 @@ the sha256 in NOTICE. To make a 16 kHz mono WAV from other audio: `ffmpeg -i in.
 
 ```toml
 [dependencies]
-speech-to-text = "0.1"
+speech-to-text = "0.2"
 burn = { version = "=0.22.1", default-features = false, features = ["std", "flex"] }
 ```
 
@@ -81,6 +81,60 @@ const r = JSON.parse(await l.transcribe(pcm16k)); // {text, tokens, ops, readbac
 
 `web/worker.mjs` in the repository is a complete Worker.
 
+## Moonshine
+
+[Moonshine](https://huggingface.co/UsefulSensors/moonshine-tiny) (Useful Sensors, English `moonshine-tiny` and
+`moonshine-base`, MIT weights) runs through the same API. It reads raw 16 kHz audio of any length (no mel
+spectrogram, no 30 s window), so a short command costs only its own length. In Partii's GPU screen (Hugging Face
+Transformers, fp16, full sets, utterances over 30 s dropped) it beat Whisper of the same size, and invented far fewer
+words in noise:
+
+| model | WER LibriSpeech test-clean | WER test-other, 0 dB noise |
+|---|---|---|
+| moonshine base | 2.9 % | 51 % |
+| whisper base.en | 3.7 % | 83 % |
+| moonshine tiny | 3.6 % | 70 % |
+| whisper tiny.en | 4.6 % | 139 % |
+
+```sh
+cargo run --release --example moonshine -- clip.wav          # tiny
+cargo run --release --example moonshine -- --base clip.wav   # base
+```
+
+```rust
+use burn::tensor::Device;
+use speech_to_text::{Moonshine, MoonshineOpts, Stt};
+
+// config.json, model.safetensors, tokenizer.json from UsefulSensors/moonshine-tiny (or moonshine-base)
+let m = Moonshine::load(&Device::flex(), &config_json, &safetensors, &tokenizer_json, MoonshineOpts::default())?;
+let t = m.transcribe(&pcm_16k_mono_f32).await?;
+
+// or either model, picked from config.json's model_type
+let stt = Stt::load(&Device::flex(), &config_json, &safetensors, &tokenizer_json)?;
+let t = stt.transcribe_with(&pcm_16k_mono_f32, Some(&cancel)).await?;
+```
+
+Greedy decoding with a KV cache and the same repeat cutter as Whisper; the token cap follows the clip length
+(6.5 tokens per second, at least 12). `Utterance` (partials) takes a `Whisper` for now; call `Moonshine::transcribe`
+on its buffer the same way.
+
+On the CPU (burn `flex`, f32, an x86-64 Linux desktop), 100 LibriSpeech dev-clean utterances (11.6 min of audio):
+
+| model | WER (ours = HF Transformers greedy) | real-time factor, 1 / 4 threads | 2 s clip | 5 s clip |
+|---|---|---|---|---|
+| moonshine tiny | 4.60 % | 0.028 / 0.021 | 45 / 38 ms | 123 / 97 ms |
+| moonshine base | 2.65 % | 0.057 / 0.041 | 121 / 93 ms | 268 / 192 ms |
+
+Greedy tokens match Hugging Face Transformers 4.57.1 (fp32, `num_beams=1`, same token cap) on all 100 utterances
+for both models; the encoder output differs by at most 7e-5 (values up to 7.5).
+
+
+**Training data.** Useful Sensors trained Moonshine on about 200K hours: about 90K hours of open sets (Common Voice,
+AMI, LibriSpeech, Multilingual LibriSpeech English, People's Speech, and GigaSpeech, which is licensed for
+non-commercial use only and makes up at most about 5 %) plus audio collected from the web; see
+[arXiv 2410.15608](https://arxiv.org/abs/2410.15608). Only the English `moonshine-tiny` and `moonshine-base` are
+MIT; Useful Sensors' non-English models are under a non-commercial Community License and are not supported here.
+
 ## Features
 
 | Feature | Default | What |
@@ -119,9 +173,10 @@ and 1500 ms for base and up (base did better at 1500 ms in our tests).
 
 The code is licensed under either of [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APACHE), at your option.
 
-The model weights are not part of this crate. OpenAI's Whisper weights are MIT-licensed; [NOTICE](NOTICE) lists every
-file the crate reads at runtime, with its license, source URL, pinned revision and sha256, and credits the code this
-crate ports (OpenAI Whisper's log-mel front end, librosa's mel filter bank, GPT-2's byte-to-unicode table).
+The model weights are not part of this crate. OpenAI's Whisper weights and Useful Sensors' English Moonshine weights are
+MIT-licensed (Moonshine's training data: see [Moonshine](#moonshine)); [NOTICE](NOTICE) lists every file the crate reads
+at runtime, with its license, source URL, pinned revision and sha256, and credits the code this crate ports (OpenAI
+Whisper's log-mel front end, librosa's mel filter bank, GPT-2's byte-to-unicode table, the Moonshine architecture).
 
 Unless you explicitly state otherwise, any contribution you submit for inclusion in this crate shall be dual licensed
 as above, without any additional terms or conditions.

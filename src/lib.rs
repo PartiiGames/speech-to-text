@@ -31,6 +31,12 @@
 //! # }
 //! ```
 //!
+//! # Moonshine
+//! [`Moonshine`] (Useful Sensors `moonshine-tiny` / `moonshine-base`, English, MIT weights) loads and transcribes the
+//! same way from the `UsefulSensors/moonshine-*` files. It reads raw audio of any length (no mel, no 30 s window) and
+//! made fewer errors than Whisper of the same size in our tests, most of all in noise. [`Stt`] holds either model and
+//! picks one from `config.json`.
+//!
 //! For push-to-talk with partial results while the user is still speaking, see [`Utterance`]; to stop a decode
 //! early, [`Cancel`].
 //!
@@ -57,14 +63,19 @@
 mod decode_attn;
 mod mel;
 mod model;
+mod moonshine;
+mod sp_tokenizer;
 mod stream;
+mod stt;
 mod tokenizer;
 mod weights;
 #[cfg(feature = "web")]
 pub mod web;
 
 pub use model::{Config, Opts, PAD_AUTO, Transcript, Whisper};
+pub use moonshine::{Moonshine, MoonshineConfig, MoonshineOpts};
 pub use stream::{Cancel, PartialEvery, Utterance};
+pub use stt::Stt;
 
 /// Audio sample rate the model takes (16 kHz).
 pub const SAMPLE_RATE: usize = mel::SAMPLE_RATE;

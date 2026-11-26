@@ -4,7 +4,7 @@ Licensed under either of the MIT license (LICENSE-MIT) or the Apache License, Ve
 option.
 
 This crate contains no model weights. It reads the files below at runtime; you supply their bytes. The
-`transcribe` example downloads the tiny.en files at the pinned revision and checks each sha256.
+`transcribe` and `moonshine` examples download their files at the pinned revision and check each sha256.
 
 --------------------------------------------------------------------------------------------------------------------
 Model files read at runtime
@@ -30,9 +30,49 @@ OpenAI Whisper base.en
     config.json        160c1df40a60d4ef5a6014d536fd845c33aabfd1f318458ac7f87cfe91ebbe76  1937
     tokenizer.json     5eb60cec1e77aeeb6869a2bb5a8e01a84c3fe5d072d75369343021fe6f5310d0  2405679
 
+Useful Sensors Moonshine tiny (English)
+  License: MIT, Copyright (c) 2025 Useful Sensors, Inc. (dba Moonshine AI) (model card:
+           https://huggingface.co/UsefulSensors/moonshine-tiny; code: https://github.com/moonshine-ai/moonshine)
+  Source:  https://huggingface.co/UsefulSensors/moonshine-tiny/tree/390624ed33d594443aa4aa221f5b9f283b545b5a
+  Revision: 390624ed33d594443aa4aa221f5b9f283b545b5a
+  sha256, bytes:
+    model.safetensors  867cd2215804859c55aa972d740bd5002be149b4e7526328c895d2408848c736  108389192
+    config.json        47a43777a14e17b1ffd5f533e021d4d18c3c475cbb96de0947ce409e16444ded  897
+    tokenizer.json     6579793438bc4fbafffacf699169ff53e3769c5a0a0f5e71cdee8853e8130deb  1985530
+
+Useful Sensors Moonshine base (English)
+  License: MIT, Copyright (c) 2025 Useful Sensors, Inc. (dba Moonshine AI) (model card:
+           https://huggingface.co/UsefulSensors/moonshine-base)
+  Source:  https://huggingface.co/UsefulSensors/moonshine-base/tree/7a73d8d55ac0ba2ef3ae761593f6784b51f96dcf
+  Revision: 7a73d8d55ac0ba2ef3ae761593f6784b51f96dcf
+  sha256, bytes:
+    model.safetensors  e020c79d0a979a7ec099f718ff1cd2f19e92aead230d69654bca5975a8e1b862  246079928
+    config.json        f2073049d85ebf3d02825a35e6355004d59310568a1098779e4421b01333a2b1  976
+    tokenizer.json     6579793438bc4fbafffacf699169ff53e3769c5a0a0f5e71cdee8853e8130deb  1985530
+
+  Moonshine training data (arXiv 2410.15608, https://arxiv.org/abs/2410.15608): about 200K hours, of which about 90K
+  hours are open sets (Common Voice, AMI, LibriSpeech, Multilingual LibriSpeech English, People's Speech, and
+  GigaSpeech, which is licensed for non-commercial use only and makes up at most about 5 %), plus audio collected
+  from the web. Only the English moonshine-tiny and moonshine-base are MIT; Useful Sensors' non-English Moonshine
+  models are under the non-commercial Moonshine AI Community License and are not used by this crate.
+
+  MIT License (Moonshine weights)
+  Copyright (c) 2025 Useful Sensors, Inc. (dba Moonshine AI)
+  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+  documentation files (the "Software"), to deal in the Software without restriction, including without limitation
+  the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+  permit persons to whom the Software is furnished to do so, subject to the following conditions:
+  The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+  the Software.
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+  THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+  TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
+
 Upstream URLs: https://huggingface.co/<repo>/resolve/<revision>/<file>. Partii mirrors the same bytes at
-https://api.partii.games/v1/ai/speech-to-text/<sha256>/<file>. tokenizer.json is the GPT-2
-byte-level BPE vocabulary as published with Whisper (MIT, as above).
+https://api.partii.games/v1/ai/speech-to-text/<sha256>/<file>. Whisper's tokenizer.json is the
+GPT-2 byte-level BPE vocabulary as published with Whisper (MIT, as above); Moonshine's is its own (MIT, as above).
 
 --------------------------------------------------------------------------------------------------------------------
 Code ported from other projects
@@ -46,6 +86,13 @@ OpenAI Whisper (https://github.com/openai/whisper), MIT, Copyright (c) 2022 Open
     blocks, learned positions, tied output embedding) and the special-token prompt (<|startoftranscript|>,
     <|notimestamps|>), implemented in burn. Tensor names follow the Hugging Face Transformers checkpoint layout
     (Apache-2.0, https://github.com/huggingface/transformers); no Transformers code is included.
+
+Moonshine (https://github.com/moonshine-ai/moonshine), MIT, Copyright (c) 2025 Useful Sensors, Inc. (dba Moonshine AI)
+  - src/moonshine.rs: the Moonshine encoder-decoder (conv1d + tanh, GroupNorm, conv1d + GELU stem on raw audio;
+    pre-norm transformer blocks with partial, interleaved rotary embeddings; gated SiLU decoder MLP) as described by
+    Hugging Face Transformers' modeling_moonshine.py (v4.57, Apache-2.0, https://github.com/huggingface/transformers),
+    implemented in burn. Tensor names follow that checkpoint layout; no Transformers code is included.
+  - src/sp_tokenizer.rs: decoding of the Moonshine tokenizer.json (metaspace pieces, <0xXX> byte fallback).
 
 librosa (https://github.com/librosa/librosa), ISC, Copyright (c) 2013--2023, librosa development team
   - src/mel.rs `mel_filters`: the Slaney-scale, Slaney-normalized mel filter bank of librosa.filters.mel (the

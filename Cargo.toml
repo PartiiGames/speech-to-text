@@ -1,17 +1,17 @@
 [package]
 name = "speech-to-text"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 authors = ["Partii Games"]
 repository = "https://github.com/PartiiGames/speech-to-text"
 homepage = "https://partii.games"
 license = "MIT OR Apache-2.0"
-description = "Real-time, on-device speech to text: OpenAI Whisper tiny.en / base.en on burn, native CPU, WebGPU / Metal / Vulkan via wgpu, and the browser (wasm). 5.9 s of speech in 143 ms on one desktop CPU (tiny.en); streaming partials and cancellation."
+description = "Real-time, on-device speech to text: Moonshine tiny/base and OpenAI Whisper tiny.en/base.en on burn, native CPU, WebGPU / Metal / Vulkan via wgpu, and the browser (wasm). A 2 s command in 38 ms on 4 desktop CPU threads (Moonshine tiny); streaming partials and cancellation."
 readme = "README.md"
 keywords = ["speech-recognition", "whisper", "realtime", "streaming", "stt"]
 categories = ["multimedia::audio", "science", "wasm", "web-programming"]
 # Not in the published package: Partii's farm/Mac scripts and the browser test harness (see FARM.md).
-exclude = ["farm*.sh", "FARM.md", "web/", "out/"]
+exclude = ["farm*.sh", "farm*.py", "FARM.md", "web/", "out/"]
 
 [lib]
 # cdylib: the browser build (feature `web`: wasm-bindgen --target web, for a Web Worker)
@@ -72,8 +72,15 @@ required-features = ["bench"]
 name = "mm_probe"
 required-features = ["bench"]
 
+[[bin]]
+name = "moonshine_bench"
+required-features = ["bench"]
+
 [[example]]
 name = "transcribe"
+
+[[example]]
+name = "moonshine"
 
 [package.metadata.docs.rs]
 # docs.rs builds against stock burn: no partii-kernels
